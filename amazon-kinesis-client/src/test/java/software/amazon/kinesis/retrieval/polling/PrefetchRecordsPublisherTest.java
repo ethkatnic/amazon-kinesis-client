@@ -44,7 +44,9 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
@@ -56,6 +58,7 @@ import software.amazon.awssdk.services.kinesis.model.ChildShard;
 import software.amazon.awssdk.services.kinesis.model.ExpiredIteratorException;
 import software.amazon.awssdk.services.kinesis.model.GetRecordsResponse;
 import software.amazon.awssdk.services.kinesis.model.InvalidArgumentException;
+import software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException;
 import software.amazon.awssdk.services.kinesis.model.Record;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
 import software.amazon.kinesis.common.StreamIdentifier;
@@ -68,6 +71,7 @@ import software.amazon.kinesis.retrieval.KinesisClientRecord;
 import software.amazon.kinesis.retrieval.RecordsPublisher;
 import software.amazon.kinesis.retrieval.RecordsRetrieved;
 import software.amazon.kinesis.retrieval.RetryableRetrievalException;
+import software.amazon.kinesis.retrieval.ThrottlingReporter;
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 import software.amazon.kinesis.utils.BlockingUtils;
 
@@ -84,6 +88,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -123,6 +128,9 @@ public class PrefetchRecordsPublisherTest {
 
     @Mock
     private ExtendedSequenceNumber sequenceNumber;
+
+    @Mock
+    private ThrottlingReporter throttlingReporter;
 
     private List<Record> records;
     private ExecutorService executorService;
@@ -800,6 +808,28 @@ public class PrefetchRecordsPublisherTest {
         }
     }
 
+    @Test
+    public void testProvisionedThroughputExceededExceptionIsRegisteredInReporter() {
+        GetRecordsResponse response = GetRecordsResponse.builder()
+                .millisBehindLatest(100L)
+                .records(Collections.emptyList())
+                .build();
+        ProvisionedThroughputExceededException throughputExceededException =
+                ProvisionedThroughputExceededException.builder().build();
+        when(getRecordsRetrievalStrategy.getRecords(anyInt()))
+                .thenThrow(throughputExceededException)
+                .thenReturn(response);
+
+        getRecordsCache.start(sequenceNumber, initialPosition);
+
+        RecordsRetrieved records = this.blockUntilRecordsAvailable();
+        InOrder inOrder = Mockito.inOrder(throttlingReporter);
+        inOrder.verify(throttlingReporter).throttled();
+        inOrder.verify(throttlingReporter, atLeastOnce()).success();
+        inOrder.verifyNoMoreInteractions();
+        assertThat(records.processRecordsInput().millisBehindLatest(), equalTo(response.millisBehindLatest()));
+    }
+
     private RecordsRetrieved blockUntilRecordsAvailable() {
         return BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, DEFAULT_TIMEOUT_MILLIS);
     }
@@ -905,6 +935,7 @@ public class PrefetchRecordsPublisherTest {
                 new NullMetricsFactory(),
                 PrefetchRecordsPublisherTest.class.getSimpleName(),
                 "shardId",
+                throttlingReporter,
                 1L);
     }
 }
