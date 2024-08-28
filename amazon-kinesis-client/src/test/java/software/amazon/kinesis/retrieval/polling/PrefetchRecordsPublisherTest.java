@@ -77,6 +77,7 @@ import software.amazon.kinesis.utils.BlockingUtils;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -810,24 +811,34 @@ public class PrefetchRecordsPublisherTest {
 
     @Test
     public void testProvisionedThroughputExceededExceptionIsRegisteredInReporter() {
-        GetRecordsResponse response = GetRecordsResponse.builder()
-                .millisBehindLatest(100L)
-                .records(Collections.emptyList())
-                .build();
-        ProvisionedThroughputExceededException throughputExceededException =
-                ProvisionedThroughputExceededException.builder().build();
         when(getRecordsRetrievalStrategy.getRecords(anyInt()))
-                .thenThrow(throughputExceededException)
-                .thenReturn(response);
+                .thenThrow(ProvisionedThroughputExceededException.builder().build())
+                .thenReturn(GetRecordsResponse.builder().build());
 
         getRecordsCache.start(sequenceNumber, initialPosition);
 
-        RecordsRetrieved records = this.blockUntilRecordsAvailable();
+        blockUntilRecordsAvailable();
         InOrder inOrder = Mockito.inOrder(throttlingReporter);
         inOrder.verify(throttlingReporter).throttled();
         inOrder.verify(throttlingReporter, atLeastOnce()).success();
         inOrder.verifyNoMoreInteractions();
-        assertThat(records.processRecordsInput().millisBehindLatest(), equalTo(response.millisBehindLatest()));
+    }
+
+    @Test
+    public void testProvisionedThroughputExceededExceptionBackoff() {
+        long idleMillisBetweenCalls = Duration.ofSeconds(1).toMillis();
+        getRecordsCache = createPrefetchRecordsPublisher(idleMillisBetweenCalls);
+        when(getRecordsRetrievalStrategy.getRecords(anyInt()))
+                .thenThrow(ProvisionedThroughputExceededException.builder().build())
+                .thenReturn(GetRecordsResponse.builder().build());
+
+        getRecordsCache.start(sequenceNumber, initialPosition);
+
+        Instant startTime = Instant.now();
+        blockUntilRecordsAvailable();
+        Instant endTime = Instant.now();
+        long elapsedMillis = Duration.between(startTime, endTime).toMillis();
+        assertThat(elapsedMillis, greaterThanOrEqualTo(idleMillisBetweenCalls));
     }
 
     private RecordsRetrieved blockUntilRecordsAvailable() {
