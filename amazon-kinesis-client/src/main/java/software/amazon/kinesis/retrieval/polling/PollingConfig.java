@@ -44,6 +44,8 @@ public class PollingConfig implements RetrievalSpecificConfig {
 
     public static final int DEFAULT_MAX_RECORDS = 10000;
 
+    public static final long MIN_IDLE_MILLIS_BETWEEN_READS = 200L;
+
     /**
      * Configurable functional interface to override the existing DataFetcher.
      */
@@ -138,9 +140,14 @@ public class PollingConfig implements RetrievalSpecificConfig {
     /**
      * Set the value for how long the ShardConsumer should sleep in between calls to
      * {@link KinesisAsyncClient#getRecords(GetRecordsRequest)}. If this is not specified here the value provided in
-     * {@link RecordsFetcherFactory} will be used.
+     * {@link RecordsFetcherFactory} will be used. Cannot set value below MIN_IDLE_MILLIS_BETWEEN_READS
      */
     public PollingConfig idleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
+        if (idleTimeBetweenReadsInMillis < MIN_IDLE_MILLIS_BETWEEN_READS) {
+            throw new IllegalArgumentException("Value for idleTimeBetweenReadsInMillis must be less than or equal to "
+                    + MIN_IDLE_MILLIS_BETWEEN_READS + " but current value is "
+                    + idleTimeBetweenReadsInMillis());
+        }
         usePollingConfigIdleTimeValue = true;
         this.idleTimeBetweenReadsInMillis = idleTimeBetweenReadsInMillis;
         return this;

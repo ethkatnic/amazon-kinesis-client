@@ -48,4 +48,9 @@ public class PollingConfigTest {
     public void testInvalidRecordLimit() {
         config.maxRecords(PollingConfig.DEFAULT_MAX_RECORDS + 1);
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidIdleMillisLimit() {
+        config.idleTimeBetweenReadsInMillis(PollingConfig.MIN_IDLE_MILLIS_BETWEEN_READS - 1);
+    }
 }
