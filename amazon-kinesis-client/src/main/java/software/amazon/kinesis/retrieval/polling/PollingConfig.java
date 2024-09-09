@@ -144,7 +144,7 @@ public class PollingConfig implements RetrievalSpecificConfig {
      */
     public PollingConfig idleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
         if (idleTimeBetweenReadsInMillis < MIN_IDLE_MILLIS_BETWEEN_READS) {
-            throw new IllegalArgumentException("Value for idleTimeBetweenReadsInMillis must be less than or equal to "
+            throw new IllegalArgumentException("idleTimeBetweenReadsInMillis must be greater than or equal to "
                     + MIN_IDLE_MILLIS_BETWEEN_READS + " but current value is "
                     + idleTimeBetweenReadsInMillis());
         }
