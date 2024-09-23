@@ -26,6 +26,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.GetRecordsRequest;
 import software.amazon.kinesis.retrieval.DataFetcherProviderConfig;
@@ -38,6 +39,7 @@ import software.amazon.kinesis.retrieval.RetrievalSpecificConfig;
 @Setter
 @ToString
 @EqualsAndHashCode
+@Slf4j
 public class PollingConfig implements RetrievalSpecificConfig {
 
     public static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
@@ -144,9 +146,9 @@ public class PollingConfig implements RetrievalSpecificConfig {
      */
     public PollingConfig idleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
         if (idleTimeBetweenReadsInMillis < MIN_IDLE_MILLIS_BETWEEN_READS) {
-            throw new IllegalArgumentException("idleTimeBetweenReadsInMillis must be greater than or equal to "
-                    + MIN_IDLE_MILLIS_BETWEEN_READS + " but current value is "
-                    + idleTimeBetweenReadsInMillis());
+            log.warn("idleTimeBetweenReadsInMillis config property is set below the minimum allowed value of 200ms."
+                    + " This value will be automatically adjusted to 200ms.\n");
+            idleTimeBetweenReadsInMillis = MIN_IDLE_MILLIS_BETWEEN_READS;
         }
         usePollingConfigIdleTimeValue = true;
         this.idleTimeBetweenReadsInMillis = idleTimeBetweenReadsInMillis;

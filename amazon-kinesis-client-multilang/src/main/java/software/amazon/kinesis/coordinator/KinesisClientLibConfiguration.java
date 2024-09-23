@@ -1104,10 +1104,7 @@ public class KinesisClientLibConfiguration {
      */
     public KinesisClientLibConfiguration withIdleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
         checkIsValuePositive("IdleTimeBetweenReadsInMillis", idleTimeBetweenReadsInMillis);
-        if (idleTimeBetweenReadsInMillis < MIN_IDLE_MILLIS_BETWEEN_READS) {
-            throw new IllegalArgumentException("idleTimeBetweenReadsInMillis must be greater than or equal to "
-                    + MIN_IDLE_MILLIS_BETWEEN_READS + " but current value is " + idleTimeBetweenReadsInMillis);
-        }
+        idleTimeBetweenReadsInMillis = Math.max(idleTimeBetweenReadsInMillis, MIN_IDLE_MILLIS_BETWEEN_READS);
         this.idleTimeBetweenReadsInMillis = idleTimeBetweenReadsInMillis;
         return this;
     }
