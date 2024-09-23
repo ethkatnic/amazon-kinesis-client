@@ -147,7 +147,7 @@ public class PollingConfig implements RetrievalSpecificConfig {
     public PollingConfig idleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
         if (idleTimeBetweenReadsInMillis < MIN_IDLE_MILLIS_BETWEEN_READS) {
             log.warn("idleTimeBetweenReadsInMillis config property is set below the minimum allowed value of 200ms."
-                    + " This value will be automatically adjusted to 200ms.\n");
+                    + " This value will be automatically adjusted to 200ms.");
             idleTimeBetweenReadsInMillis = MIN_IDLE_MILLIS_BETWEEN_READS;
         }
         usePollingConfigIdleTimeValue = true;
