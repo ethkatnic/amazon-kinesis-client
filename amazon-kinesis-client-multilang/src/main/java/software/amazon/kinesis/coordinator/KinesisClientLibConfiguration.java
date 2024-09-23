@@ -71,6 +71,12 @@ public class KinesisClientLibConfiguration {
     public static final long DEFAULT_IDLETIME_BETWEEN_READS_MILLIS = 1000L;
 
     /**
+     * The minimum time {@link ShardConsumer} should sleep between calls to
+     * {@link com.amazonaws.services.kinesis.AmazonKinesis#getRecords(com.amazonaws.services.kinesis.model.GetRecordsRequest)}.
+     */
+    public static final long MIN_IDLE_MILLIS_BETWEEN_READS = 200L;
+
+    /**
      * Don't call processRecords() on the record processor for empty record lists.
      */
     public static final boolean DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST = false;
@@ -1098,6 +1104,7 @@ public class KinesisClientLibConfiguration {
      */
     public KinesisClientLibConfiguration withIdleTimeBetweenReadsInMillis(long idleTimeBetweenReadsInMillis) {
         checkIsValuePositive("IdleTimeBetweenReadsInMillis", idleTimeBetweenReadsInMillis);
+        idleTimeBetweenReadsInMillis = Math.max(idleTimeBetweenReadsInMillis, MIN_IDLE_MILLIS_BETWEEN_READS);
         this.idleTimeBetweenReadsInMillis = idleTimeBetweenReadsInMillis;
         return this;
     }
