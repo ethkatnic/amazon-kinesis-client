@@ -845,9 +845,9 @@ public class PrefetchRecordsPublisherTest {
         getRecordsCache.start(sequenceNumber, initialPosition);
 
         Instant startTime = Instant.now();
-        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisAfterThrottle); // expected ~2000L
+        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisAfterThrottle);
         Instant endTime = Instant.now();
-        long elapsedMillis = Duration.between(startTime, endTime).toMillis(); // expected ~2100ms
+        long elapsedMillis = Duration.between(startTime, endTime).toMillis();
         assertThat(elapsedMillis, greaterThanOrEqualTo(idleMillisAfterThrottle));
         assertThat(elapsedMillis, lessThanOrEqualTo(idleMillisAfterThrottle + idleMillisBetweenCalls));
     }
@@ -867,9 +867,9 @@ public class PrefetchRecordsPublisherTest {
         getRecordsCache.start(sequenceNumber, initialPosition);
 
         Instant startTime = Instant.now();
-        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisBetweenCalls); // expected ~1000L
+        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisBetweenCalls);
         Instant endTime = Instant.now();
-        long elapsedMillis = Duration.between(startTime, endTime).toMillis(); // expected ~1100ms
+        long elapsedMillis = Duration.between(startTime, endTime).toMillis();
         assertThat(elapsedMillis, greaterThanOrEqualTo(idleMillisBetweenCalls));
     }
 
