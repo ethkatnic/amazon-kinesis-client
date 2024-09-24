@@ -290,7 +290,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
             final MetricsFactory metricsFactory,
             final String operation,
             final String shardId,
-            @NonNull final ThrottlingReporter throttlingReporter) {
+            final ThrottlingReporter throttlingReporter) {
         this(
                 maxPendingProcessRecordsInput,
                 maxByteSize,
