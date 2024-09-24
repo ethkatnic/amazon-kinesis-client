@@ -160,6 +160,7 @@ public class MultiLangDaemonConfigurationTest {
         MultiLangDaemonConfiguration configuration = baseConfiguration();
         configuration.setMaxRecords(10);
         configuration.setIdleTimeBetweenReadsInMillis(60000);
+        configuration.setIdleMillisAfterThrottle(60000);
 
         MultiLangDaemonConfiguration.ResolvedConfiguration resolvedConfiguration =
                 configuration.resolvedConfiguration(shardRecordProcessorFactory);
@@ -173,6 +174,10 @@ public class MultiLangDaemonConfigurationTest {
                 60000,
                 ((PollingConfig) resolvedConfiguration.getRetrievalConfig().retrievalSpecificConfig())
                         .idleTimeBetweenReadsInMillis());
+        assertEquals(
+                60000,
+                ((PollingConfig) resolvedConfiguration.getRetrievalConfig().retrievalSpecificConfig())
+                        .idleMillisAfterThrottle());
         assertTrue(((PollingConfig) resolvedConfiguration.getRetrievalConfig().retrievalSpecificConfig())
                 .usePollingConfigIdleTimeValue());
     }

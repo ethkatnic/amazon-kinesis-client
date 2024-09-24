@@ -41,6 +41,10 @@ public class PollingConfigBean implements RetrievalConfigBuilder {
 
         void setIdleTimeBetweenReadsInMillis(long value);
 
+        long getIdleMillisAfterThrottle();
+
+        void setIdleMillisAfterThrottle(long value);
+
         int getMaxRecords();
 
         void setMaxRecords(int value);
@@ -54,6 +58,9 @@ public class PollingConfigBean implements RetrievalConfigBuilder {
 
     @ConfigurationSettable(configurationClass = PollingConfig.class)
     private long idleTimeBetweenReadsInMillis;
+
+    @ConfigurationSettable(configurationClass = PollingConfig.class)
+    private long idleMillisAfterThrottle;
 
     @ConfigurationSettable(configurationClass = PollingConfig.class)
     private int maxRecords;
