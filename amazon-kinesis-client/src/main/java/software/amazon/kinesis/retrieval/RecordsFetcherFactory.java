@@ -87,7 +87,7 @@ public interface RecordsFetcherFactory {
     long idleMillisBetweenCalls();
 
     /**
-     * Sets the minimum idle time after encountering a throttling exception.
+     * Sets the idle time after encountering a throttling exception.
      *
      * @param idleMillisAfterThrottle Sleep millis after a throttling exception.
      */

@@ -80,7 +80,7 @@ public class PollingConfig implements RetrievalSpecificConfig {
 
     /**
      * Milliseconds publisher should sleep after encountering throttling error
-     * during call to {@link KinesisAsyncClient#getRecords(GetRecordsRequest)}.
+     * before next call to {@link KinesisAsyncClient#getRecords(GetRecordsRequest)}.
      *
      * <p>
      * Default value: 1500L
