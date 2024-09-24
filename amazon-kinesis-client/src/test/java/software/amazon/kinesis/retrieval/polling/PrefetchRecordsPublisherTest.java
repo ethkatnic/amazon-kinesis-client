@@ -78,6 +78,7 @@ import software.amazon.kinesis.utils.BlockingUtils;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -117,6 +118,8 @@ public class PrefetchRecordsPublisherTest {
     private static final String NEXT_SHARD_ITERATOR = "testNextShardIterator";
 
     private static final long DEFAULT_TIMEOUT_MILLIS = Duration.ofSeconds(1).toMillis();
+    private static final long DEFAULT_THROTTLE_BACKOFF_MILLIS =
+            Duration.ofSeconds(1).toMillis();
 
     @Mock
     private GetRecordsRetrievalStrategy getRecordsRetrievalStrategy;
@@ -809,8 +812,11 @@ public class PrefetchRecordsPublisherTest {
         }
     }
 
+    /**
+     * Tests that a thrown {@link ProvisionedThroughputExceededException} writes to throttlingReporter.
+     */
     @Test
-    public void testProvisionedThroughputExceededExceptionIsRegisteredInReporter() {
+    public void testProvisionedThroughputExceededExceptionReporter() {
         when(getRecordsRetrievalStrategy.getRecords(anyInt()))
                 .thenThrow(ProvisionedThroughputExceededException.builder().build())
                 .thenReturn(GetRecordsResponse.builder().build());
@@ -824,10 +830,14 @@ public class PrefetchRecordsPublisherTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    /**
+     * Tests that publisher waits at least idleMillisAfterThrottle after throttle exception.
+     */
     @Test
-    public void testProvisionedThroughputExceededExceptionBackoff() {
+    public void testThrottleBackoff() {
         long idleMillisBetweenCalls = Duration.ofSeconds(1).toMillis();
-        getRecordsCache = createPrefetchRecordsPublisher(idleMillisBetweenCalls);
+        long idleMillisAfterThrottle = Duration.ofSeconds(2).toMillis();
+        getRecordsCache = createPrefetchRecordsPublisher(idleMillisBetweenCalls, idleMillisAfterThrottle);
         when(getRecordsRetrievalStrategy.getRecords(anyInt()))
                 .thenThrow(ProvisionedThroughputExceededException.builder().build())
                 .thenReturn(GetRecordsResponse.builder().build());
@@ -835,9 +845,31 @@ public class PrefetchRecordsPublisherTest {
         getRecordsCache.start(sequenceNumber, initialPosition);
 
         Instant startTime = Instant.now();
-        blockUntilRecordsAvailable();
+        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisAfterThrottle); // expected ~2000L
         Instant endTime = Instant.now();
-        long elapsedMillis = Duration.between(startTime, endTime).toMillis();
+        long elapsedMillis = Duration.between(startTime, endTime).toMillis(); // expected ~2100ms
+        assertThat(elapsedMillis, greaterThanOrEqualTo(idleMillisAfterThrottle));
+        assertThat(elapsedMillis, lessThanOrEqualTo(idleMillisAfterThrottle + idleMillisBetweenCalls));
+    }
+
+    /**
+     * Tests that publisher waits at least idleMillisBetweenCalls regardless of idleMillisAfterThrottle.
+     */
+    @Test
+    public void testThrottleBackoffObeysIdle() {
+        long idleMillisBetweenCalls = Duration.ofSeconds(1).toMillis();
+        long idleMillisAfterThrottle = 0L;
+        getRecordsCache = createPrefetchRecordsPublisher(idleMillisBetweenCalls, idleMillisAfterThrottle);
+        when(getRecordsRetrievalStrategy.getRecords(anyInt()))
+                .thenThrow(ProvisionedThroughputExceededException.builder().build())
+                .thenReturn(GetRecordsResponse.builder().build());
+
+        getRecordsCache.start(sequenceNumber, initialPosition);
+
+        Instant startTime = Instant.now();
+        BlockingUtils.blockUntilRecordsAvailable(this::evictPublishedEvent, idleMillisBetweenCalls); // expected ~1000L
+        Instant endTime = Instant.now();
+        long elapsedMillis = Duration.between(startTime, endTime).toMillis(); // expected ~1100ms
         assertThat(elapsedMillis, greaterThanOrEqualTo(idleMillisBetweenCalls));
     }
 
@@ -934,7 +966,8 @@ public class PrefetchRecordsPublisherTest {
         return SdkBytes.fromByteArray(new byte[size]);
     }
 
-    private PrefetchRecordsPublisher createPrefetchRecordsPublisher(final long idleMillisBetweenCalls) {
+    private PrefetchRecordsPublisher createPrefetchRecordsPublisher(
+            final long idleMillisBetweenCalls, final long idleMillisAfterThrottle) {
         return new PrefetchRecordsPublisher(
                 MAX_SIZE,
                 3 * SIZE_1_MB,
@@ -943,10 +976,15 @@ public class PrefetchRecordsPublisherTest {
                 getRecordsRetrievalStrategy,
                 executorService,
                 idleMillisBetweenCalls,
+                idleMillisAfterThrottle,
                 new NullMetricsFactory(),
                 PrefetchRecordsPublisherTest.class.getSimpleName(),
                 "shardId",
                 throttlingReporter,
                 1L);
+    }
+
+    private PrefetchRecordsPublisher createPrefetchRecordsPublisher(final long idleMillisBetweenCalls) {
+        return createPrefetchRecordsPublisher(idleMillisBetweenCalls, DEFAULT_THROTTLE_BACKOFF_MILLIS);
     }
 }

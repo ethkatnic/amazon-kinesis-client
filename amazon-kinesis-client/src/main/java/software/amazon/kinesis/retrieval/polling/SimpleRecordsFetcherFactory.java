@@ -33,6 +33,7 @@ public class SimpleRecordsFetcherFactory implements RecordsFetcherFactory {
     private int maxByteSize = 8 * 1024 * 1024;
     private int maxRecordsCount = 30000;
     private long idleMillisBetweenCalls = 1500L;
+    private long idleMillisAfterThrottle = 1500L;
     private int maxConsecutiveThrottles = 5;
     private DataFetchingStrategy dataFetchingStrategy = DataFetchingStrategy.DEFAULT;
 
@@ -56,6 +57,7 @@ public class SimpleRecordsFetcherFactory implements RecordsFetcherFactory {
                                 .setNameFormat("prefetch-cache-" + shardId + "-%04d")
                                 .build()),
                 idleMillisBetweenCalls,
+                idleMillisAfterThrottle,
                 metricsFactory,
                 "ProcessTask",
                 shardId,
@@ -88,6 +90,11 @@ public class SimpleRecordsFetcherFactory implements RecordsFetcherFactory {
     }
 
     @Override
+    public void idleMillisAfterThrottle(final long idleMillisAfterThrottle) {
+        this.idleMillisAfterThrottle = idleMillisAfterThrottle;
+    }
+
+    @Override
     public int maxPendingProcessRecordsInput() {
         return maxPendingProcessRecordsInput;
     }
@@ -110,5 +117,10 @@ public class SimpleRecordsFetcherFactory implements RecordsFetcherFactory {
     @Override
     public long idleMillisBetweenCalls() {
         return idleMillisBetweenCalls;
+    }
+
+    @Override
+    public long idleMillisAfterThrottle() {
+        return idleMillisAfterThrottle;
     }
 }

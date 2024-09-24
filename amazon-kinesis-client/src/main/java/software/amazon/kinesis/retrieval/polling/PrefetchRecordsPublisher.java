@@ -92,6 +92,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
     private final ExecutorService executorService;
     private final MetricsFactory metricsFactory;
     private final long idleMillisBetweenCalls;
+    private final long idleMillisAfterThrottle;
     private Instant lastSuccessfulCall;
     private boolean isFirstGetCallTry = true;
     private final DefaultGetRecordsCacheDaemon defaultGetRecordsCacheDaemon;
@@ -222,6 +223,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
      * @param getRecordsRetrievalStrategy Retrieval strategy for the get records call
      * @param executorService Executor service for the cache
      * @param idleMillisBetweenCalls maximum time to wait before dispatching the next get records call
+     * @param idleMillisAfterThrottle minimum time to wait before dispatching the next get records call after throttle
      * @param awaitTerminationTimeoutMillis maximum time to wait for graceful shutdown of executorService
      */
     public PrefetchRecordsPublisher(
@@ -232,6 +234,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
             @NonNull final GetRecordsRetrievalStrategy getRecordsRetrievalStrategy,
             @NonNull final ExecutorService executorService,
             final long idleMillisBetweenCalls,
+            final long idleMillisAfterThrottle,
             @NonNull final MetricsFactory metricsFactory,
             @NonNull final String operation,
             @NonNull final String shardId,
@@ -249,6 +252,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
         this.executorService = executorService;
         this.metricsFactory = new ThreadSafeMetricsDelegatingFactory(metricsFactory);
         this.idleMillisBetweenCalls = idleMillisBetweenCalls;
+        this.idleMillisAfterThrottle = idleMillisAfterThrottle;
         this.defaultGetRecordsCacheDaemon = new DefaultGetRecordsCacheDaemon();
         Validate.notEmpty(operation, "Operation cannot be empty");
         this.throttlingReporter = throttlingReporter;
@@ -272,6 +276,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
      * @param getRecordsRetrievalStrategy Retrieval strategy for the get records call
      * @param executorService Executor service for the cache
      * @param idleMillisBetweenCalls maximum time to wait before dispatching the next get records call
+     * @param idleMillisAfterThrottle minimum time to wait before dispatching the next get records call after throttle
      */
     public PrefetchRecordsPublisher(
             final int maxPendingProcessRecordsInput,
@@ -281,6 +286,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
             final GetRecordsRetrievalStrategy getRecordsRetrievalStrategy,
             final ExecutorService executorService,
             final long idleMillisBetweenCalls,
+            final long idleMillisAfterThrottle,
             final MetricsFactory metricsFactory,
             final String operation,
             final String shardId,
@@ -293,6 +299,7 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
                 getRecordsRetrievalStrategy,
                 executorService,
                 idleMillisBetweenCalls,
+                idleMillisAfterThrottle,
                 metricsFactory,
                 operation,
                 shardId,
@@ -591,12 +598,11 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
 
                     publisherSession.dataFetcher().restartIterator();
                 } catch (ProvisionedThroughputExceededException e) {
-                    // Update the lastSuccessfulCall if we get a throttling exception so that we back off idleMillis
-                    // for the next call
-                    lastSuccessfulCall = Instant.now();
-                    throttlingReporter.throttled();
-                    log.error("{} :  Exception thrown while fetching records from Kinesis", streamAndShardId, e);
-                    log.info("Backing off for {} millis - idleMillisBetweenCalls", idleMillisBetweenCalls);
+                    log.error(
+                            "{} : ProvisionedThroughputExceededException thrown while fetching records from Kinesis",
+                            streamAndShardId,
+                            e);
+                    throttlePublisher();
                 } catch (SdkException e) {
                     log.error("{} :  Exception thrown while fetching records from Kinesis", streamAndShardId, e);
                 } finally {
@@ -615,6 +621,17 @@ public class PrefetchRecordsPublisher implements RecordsPublisher {
                                     + "Shutdown has probably been started",
                             streamAndShardId);
                 }
+            }
+        }
+
+        private void throttlePublisher() {
+            log.info("Backing off for {} millis", idleMillisAfterThrottle);
+            lastSuccessfulCall = Instant.now();
+            throttlingReporter.throttled();
+            try {
+                Thread.sleep(idleMillisAfterThrottle);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
         }
 

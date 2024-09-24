@@ -79,6 +79,7 @@ public class PrefetchRecordsPublisherIntegrationTest {
     private static final int MAX_RECORDS_COUNT = 30_000;
     private static final int MAX_RECORDS_PER_CALL = 10_000;
     private static final long IDLE_MILLIS_BETWEEN_CALLS = 500L;
+    private static final long IDLE_MILLIS_AFTER_THROTTLE = 500L;
     private static final long AWAIT_TERMINATION_TIMEOUT = 1L;
     private static final MetricsFactory NULL_METRICS_FACTORY = new NullMetricsFactory();
 
@@ -124,6 +125,7 @@ public class PrefetchRecordsPublisherIntegrationTest {
                 getRecordsRetrievalStrategy,
                 executorService,
                 IDLE_MILLIS_BETWEEN_CALLS,
+                IDLE_MILLIS_AFTER_THROTTLE,
                 new NullMetricsFactory(),
                 operation,
                 "test-shard",
@@ -185,6 +187,7 @@ public class PrefetchRecordsPublisherIntegrationTest {
                 getRecordsRetrievalStrategy2,
                 executorService2,
                 IDLE_MILLIS_BETWEEN_CALLS,
+                IDLE_MILLIS_AFTER_THROTTLE,
                 new NullMetricsFactory(),
                 operation,
                 "test-shard-2",
