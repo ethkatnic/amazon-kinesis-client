@@ -43,6 +43,7 @@ public class PollingConfig implements RetrievalSpecificConfig {
     public static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
     public static final int DEFAULT_MAX_RECORDS = 10000;
+    public static final long DEFAULT_THROTTLE_MILLIS = 1500L;
 
     /**
      * Configurable functional interface to override the existing DataFetcher.
@@ -76,6 +77,16 @@ public class PollingConfig implements RetrievalSpecificConfig {
      * </p>
      */
     private int maxRecords = DEFAULT_MAX_RECORDS;
+
+    /**
+     * Milliseconds publisher should sleep after encountering throttling error
+     * before next call to {@link KinesisAsyncClient#getRecords(GetRecordsRequest)}.
+     *
+     * <p>
+     * Default value: 1500L
+     * </p>
+     */
+    private long idleMillisAfterThrottle = DEFAULT_THROTTLE_MILLIS;
 
     /**
      * @param streamName    Name of Kinesis stream.
@@ -166,6 +177,7 @@ public class PollingConfig implements RetrievalSpecificConfig {
         if (usePollingConfigIdleTimeValue) {
             recordsFetcherFactory.idleMillisBetweenCalls(idleTimeBetweenReadsInMillis);
         }
+        recordsFetcherFactory.idleMillisAfterThrottle(idleMillisAfterThrottle);
         return new SynchronousBlockingRetrievalFactory(
                 streamName(),
                 kinesisClient(),
